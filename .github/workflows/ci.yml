@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  # The whole suite runs on Linux because the collectors talk to an injected runner
+  # rather than to PowerShell. Three Python versions, because the project claims to
+  # support 3.11 and up.
+  linux:
+    name: Lint and test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Check formatting
+        run: ruff format --check .
+
+      - name: Type check
+        run: mypy
+
+      - name: Test
+        run: pytest --cov --cov-report=term-missing --junitxml=testresults/junit.xml
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.python-version }}
+          path: testresults/
+          if-no-files-found: warn
+
+  # The job that matters most. On Windows the tests marked `windows` are not skipped,
+  # so the PowerShell in this repository is actually executed instead of only being
+  # plausible, and the agent is started end to end against the runner itself.
+  windows:
+    name: Test on Windows
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: Test
+        run: pytest --cov --cov-report=term-missing
+
+      - name: Scrape the runner itself
+        shell: pwsh
+        run: |
+          # --powershell pwsh exercises PowerShell 7; the marked unit test above uses
+          # Windows PowerShell 5.1, so both interpreters are covered.
+          $output = (python -m windows_health_exporter --once --powershell pwsh) -join "`n"
+          Write-Host $output
+
+          if ($output -notmatch 'windows_health_info\{') {
+            throw 'The scrape did not report the identity of the machine.'
+          }
+
+          # Only the two collectors that must work anywhere are asserted. Defender and
+          # the update history depend on how the runner image is configured, and a CI
+          # failure there would say nothing about this code.
+          foreach ($collector in 'system', 'disk') {
+            if ($output -notmatch "windows_health_collector_up\{collector=""$collector""\} 1") {
+              throw "The $collector collector failed on a clean Windows runner."
+            }
+          }

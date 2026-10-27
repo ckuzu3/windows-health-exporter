@@ -1,0 +1,117 @@
+# Alert rules for the metrics this exporter produces.
+#
+# These are written to be defensible rather than complete. Every rule has a `for` long
+# enough that a reboot or a reconnect does not page anyone, and every one says in its
+# annotation what the receiver is expected to do about it. A rule nobody can act on is a
+# rule that teaches people to ignore the channel.
+#
+# Not verified against a running Prometheus: there is none on the machine this was
+# written on. `promtool check rules prometheus/alerts.yml` is the command that would.
+
+groups:
+  - name: windows-health
+    rules:
+      # The exporter itself. Without this, every rule below goes quiet when the agent
+      # stops, and silence reads like health.
+      - alert: WindowsHealthExporterDown
+        expr: up{job="windows-health"} == 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "No metrics from {{ $labels.instance }} for 15 minutes"
+          description: >-
+            The client is off, offline or the agent stopped. Check it before trusting any
+            other alert about this machine, because the absence of an alert is not health.
+
+      - alert: WindowsHealthCollectorFailing
+        expr: windows_health_collector_up == 0
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Collector {{ $labels.collector }} is failing on {{ $labels.instance }}"
+          description: >-
+            One source is not answering while the rest of the scrape works. Usually a
+            permission problem or a disabled service. The metrics from that collector are
+            stale, not zero.
+
+      - alert: WindowsDefenderRealtimeProtectionOff
+        expr: windows_health_defender_realtime_protection == 0
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Defender real-time protection is off on {{ $labels.instance }}"
+          description: >-
+            Switch it back on and find out why it was off. Ten minutes of grace covers a
+            restart; anything longer is a decision somebody made.
+
+      - alert: WindowsDefenderSignaturesStale
+        expr: windows_health_defender_signature_age_days > 3
+        for: 6h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Defender signatures are {{ $value }} days old on {{ $labels.instance }}"
+          description: >-
+            The client is not reaching the update service. A laptop that was away for a
+            weekend clears on its own, which is what the six hours are for.
+
+      - alert: WindowsClientNotPatched
+        expr: (time() - windows_health_last_update_install_time_seconds) / 86400 > 45
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} has not installed an update in 45 days"
+          description: >-
+            Check the update service and the maintenance window. Clients that never report
+            a patch date are deliberately not covered here: they have no series at all, and
+            WindowsClientPatchDateUnknown below is the rule for them.
+
+      - alert: WindowsClientPatchDateUnknown
+        expr: absent_over_time(windows_health_last_update_install_time_seconds[6h]) == 1
+        for: 6h
+        labels:
+          severity: warning
+        annotations:
+          summary: "No patch date reported by {{ $labels.instance }}"
+          description: >-
+            Neither the update registry key nor the hotfix list answered. The client is not
+            necessarily unpatched, but nobody can say that it is patched either.
+
+      - alert: WindowsRebootPendingTooLong
+        expr: windows_health_pending_reboot == 1
+        for: 7d
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} has been waiting for a restart for a week"
+          description: >-
+            Servicing is not finished until the client restarts, so its patch level is
+            overstated until then. A week is long enough that this is not about a user who
+            postponed once.
+
+      - alert: WindowsDiskSpaceLow
+        expr: >-
+          windows_health_disk_free_bytes / windows_health_disk_total_bytes < 0.10
+        for: 2h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.drive }} on {{ $labels.instance }} is below 10 percent free"
+          description: >-
+            Below ten percent, updates start failing before the user notices anything.
+
+      - alert: WindowsWatchedServiceDown
+        expr: windows_health_service_installed == 1 and windows_health_service_up == 0
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.service }} is not running on {{ $labels.instance }}"
+          description: >-
+            The service exists and is stopped, which is different from never having been
+            installed. The installed check in the expression is what keeps this rule quiet
+            on clients that simply do not have it.
