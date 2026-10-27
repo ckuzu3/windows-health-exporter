@@ -1,5 +1,7 @@
 # windows-health-exporter
 
+[![CI](https://github.com/ckuzu3/windows-health-exporter/actions/workflows/ci.yml/badge.svg)](https://github.com/ckuzu3/windows-health-exporter/actions/workflows/ci.yml)
+
 A small agent that reports the health of a managed Windows client as Prometheus metrics:
 identity and uptime, disk space, watched services, patch level and Defender state.
 
@@ -220,10 +222,10 @@ started end to end against the runner itself.
 
 ## Known limits
 
-- **The alert rules are unverified.** There is no Prometheus on the machine this was
-  written on, so `promtool check rules` has not run against
-  [prometheus/alerts.yml](prometheus/alerts.yml). The thresholds are judgement, not
-  measurement.
+- **The alert rules parse, but have never fired.** `promtool check rules` accepts all
+  nine of them. That proves the syntax and the expressions, not the thresholds: three days
+  for stale signatures and forty-five days without a patch are judgement, and only an
+  outage would tell me whether they are the right numbers.
 - **The scrape is unauthenticated.** On localhost that is fine. Exposed to a network it
   needs at least a firewall rule, and really a reverse proxy with TLS.
 - **Run by hand on Windows 11 only.** CI additionally runs the PowerShell tests and one

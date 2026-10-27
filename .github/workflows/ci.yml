@@ -53,6 +53,20 @@ jobs:
           path: testresults/
           if-no-files-found: warn
 
+  # The README says promtool accepts the alert rules. A claim like that goes stale the
+  # first time somebody edits a rule, so the pipeline makes it again on every push.
+  alert-rules:
+    name: Check the alert rules
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: promtool check rules
+        run: >-
+          docker run --rm -v "$PWD:/work:ro" --entrypoint promtool
+          prom/prometheus:v3.7.3 check rules /work/prometheus/alerts.yml
+
   # The job that matters most. On Windows the tests marked `windows` are not skipped,
   # so the PowerShell in this repository is actually executed instead of only being
   # plausible, and the agent is started end to end against the runner itself.

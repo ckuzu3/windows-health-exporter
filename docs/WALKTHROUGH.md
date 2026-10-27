@@ -184,8 +184,9 @@ way to find out.
 
 ### What is not tested, and why
 
-- **The alert rules.** No Prometheus on this machine, so `promtool check rules` has not
-  run. The thresholds are judgement rather than measurement, and the README says so.
+- **The alert thresholds.** `promtool check rules` accepts all nine rules, so the syntax
+  and the expressions are checked. Nobody has made one fire, and the numbers in them are
+  judgement rather than measurement.
 - **Windows Server.** The queries are standard, but I have run this on Windows 11 only.
 - **The one line in `main` that starts a long-running server**, and the `__main__` module,
   which is covered by a subprocess test that coverage cannot see.

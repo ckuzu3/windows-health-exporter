@@ -5,8 +5,8 @@
 # annotation what the receiver is expected to do about it. A rule nobody can act on is a
 # rule that teaches people to ignore the channel.
 #
-# Not verified against a running Prometheus: there is none on the machine this was
-# written on. `promtool check rules prometheus/alerts.yml` is the command that would.
+# Checked with `promtool check rules prometheus/alerts.yml`, which accepts all nine.
+# That validates the syntax and the expressions; the thresholds are still judgement.
 
 groups:
   - name: windows-health
