@@ -226,8 +226,9 @@ started end to end against the runner itself.
   measurement.
 - **The scrape is unauthenticated.** On localhost that is fine. Exposed to a network it
   needs at least a firewall rule, and really a reverse proxy with TLS.
-- **Tested on Windows 11 only.** The queries are standard and should hold on Windows
-  Server, but I have not run it there.
+- **Run by hand on Windows 11 only.** CI additionally runs the PowerShell tests and one
+  end-to-end scrape on a Windows Server runner, so the scripts are known to work there
+  too; I have not used it on a server myself.
 - **A scrape takes a few seconds**, because each collector starts a PowerShell process.
   That is acceptable at a 60-second scrape interval and would not be at five.
 
