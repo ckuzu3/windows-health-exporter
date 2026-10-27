@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Local output
+*.prom
+testresults/
+
+# Editor, tooling and OS noise
+.vscode/
+.claude/
+.idea/
+Thumbs.db
+desktop.ini
