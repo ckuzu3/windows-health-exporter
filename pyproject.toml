@@ -1,0 +1,90 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "windows-health-exporter"
+version = "0.1.0"
+description = "Exports the health of a managed Windows client as Prometheus metrics."
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "ckuzu3" }]
+
+# No runtime dependencies, on purpose. This agent is meant to be copied onto managed
+# clients, and "pip install" on several hundred of them is a deployment problem rather
+# than a detail. Everything it needs is in the standard library.
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+    "ruff>=0.9",
+    "mypy>=1.14",
+]
+
+[project.scripts]
+windows-health-exporter = "windows_health_exporter.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F",  # pycodestyle and pyflakes
+    "I",            # import sorting
+    "B",            # bugbear
+    "C4",           # comprehensions
+    "UP",           # pyupgrade
+    "SIM",          # simplifications
+    "RUF",          # ruff-specific
+    "ANN",          # missing annotations
+    "D",            # docstrings
+    "PT",           # pytest style
+    "ARG",          # unused arguments
+    "DTZ",          # naive datetime usage
+    "S",            # bandit: this process runs on managed clients
+]
+ignore = [
+    "D203",  # incompatible with D211, which ruff prefers
+    "D213",  # incompatible with D212, which ruff prefers
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests name themselves, and assert is how they assert.
+# Test modules and their doubles name themselves, and assert is how they assert.
+"tests/*" = ["D100", "D101", "D102", "D103", "D104", "D105", "D107", "S101"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "pep257"
+
+[tool.mypy]
+python_version = "3.11"
+files = ["src/windows_health_exporter", "tests"]
+mypy_path = "src"
+strict = true
+warn_unreachable = true
+disallow_any_generics = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --strict-config"
+filterwarnings = ["error"]
+markers = [
+    "windows: a test that really runs PowerShell and is skipped elsewhere",
+]
+
+[tool.coverage.run]
+source = ["windows_health_exporter"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+# A coverage number nobody enforces is a description, not a promise.
+fail_under = 90
+exclude_lines = ["pragma: no cover", "if TYPE_CHECKING:"]
